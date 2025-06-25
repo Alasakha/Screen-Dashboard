@@ -13,5 +13,12 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    proxy: {
+      '/api': {
+        target: 'http://192.168.1.197:10999', // 后端地址
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api/, '') // 去掉 '/api' 前缀
+      }
+    }
   },
 })

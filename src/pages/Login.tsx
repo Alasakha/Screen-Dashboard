@@ -2,21 +2,50 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import apollobac from '@/assets/background/apollobac.png'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { login } from '@/api/login/login'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('ERP')
+  const [password, setPassword] = useState('ERP123')
   const navigate = useNavigate()
+  const location = useLocation()
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // 本地模拟账号密码校验
-    if (email === 'admin' && password === '123456') {
-      localStorage.setItem('token', 'mock-token')
-      navigate('/dashboard')
-    } else {
-      window.alert('用户名或密码错误')
+    if (!username || !password) {
+      alert('请输入用户名和密码')
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      console.log(`准备使用用户名: ${username} 和密码: ${password} 进行登录...`)
+      const response = await login(username, password)
+
+      if (response && response.token) {
+        console.log('登录成功，获取到长期 Token:', response.token)
+        localStorage.setItem('token', response.token)
+        
+        // 重定向逻辑：优先重定向到用户原来想访问的页面
+        const from = location.state?.from?.pathname || '/'
+        navigate(from, { replace: true })
+      } else {
+        console.error('登录成功，但未在响应中找到 Token:', response)
+        alert('登录失败，请稍后再试。')
+      }
+
+    } catch (error) {
+      console.error('登录处理函数捕获到错误:', error)
+      const errorMessage = error?.response?.data?.message || error.message || '用户名或密码错误，或服务器异常。'
+      alert(errorMessage)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -63,20 +92,25 @@ export default function Login() {
               <Input
                 type="text"
                 placeholder="账号"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                disabled={isLoading}
               />
               <Input
                 type="password"
                 placeholder="Password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                disabled={isLoading}
               />
               <div className="flex items-center space-x-2">
                 <input type="checkbox" id="showPwd" className="accent-black" />
                 <label htmlFor="showPwd" className="text-sm text-gray-600">Show password</label>
               </div>
-              <Button type="submit" className="w-full">登录</Button>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? '登录中...' : '登录'}
+              </Button>
+              {error && <p className="text-sm text-destructive text-center mt-2">{error}</p>}
             </form>
             <div className="flex items-center my-6">
               <div className="flex-1 h-px bg-gray-200" />
